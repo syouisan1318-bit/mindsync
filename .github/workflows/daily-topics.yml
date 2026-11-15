@@ -1,0 +1,55 @@
+
+name: MindSync Daily Topics
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish daily topic
+        run: |
+          python3 - <<'PY'
+          import json, datetime, pathlib
+
+          topics = [
+              "如果财富自由了，你还会继续创业吗？",
+              "独立思考是否意味着必须质疑多数人的观点？",
+              "人生的意义是发现的，还是自己创造的？",
+              "自由与财富之间，究竟是什么关系？",
+              "人性是由环境塑造，还是由选择决定？",
+              "创业最大的收获是财富，还是对自己的认识？",
+              "什么样的交流才算真正有深度？"
+          ]
+
+          today = datetime.datetime.now(
+              datetime.timezone(datetime.timedelta(hours=8))
+          ).date()
+          topic = topics[today.toordinal() % len(topics)]
+
+          pathlib.Path("daily-topic.json").write_text(
+              json.dumps(
+                  {"date": str(today), "topic": topic},
+                  ensure_ascii=False
+              ),
+              encoding="utf-8"
+          )
+          PY
+
+      - name: Save topic
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add daily-topic.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update daily topic"
+            git push
+          fi
