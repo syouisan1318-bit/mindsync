@@ -1,55 +1,43 @@
-
-                   """深度交流不等于使用艰深的词汇，也不等于争论到对方认输。它始于对问题的共同好奇，以及愿意理解彼此观点背后的经验与理由。
-
-          一个常见障碍是我们急着回应，却没有确认自己是否听懂。与其马上反驳，不如先复述对方的核心意思，再问：你为什么这样判断？有没有什么经历让你改变看法？这些问题往往比表达立场更有力量。
-
-          深度也需要边界。不是每次聊天都必须谈论人生与社会；轻松和沉默同样重要。真正有价值的对话，是让双方离开时对世界多了一点理解，对自己的盲点多了一点觉察，而不是只记得谁赢了。"""
-              )
-          ]
-
-          title, body = articles[today.toordinal() % len(articles)]
-          record = {
-              "date": str(today),
-              "topic": title,
-              "title": title,
-              "content": body,
-              "question": "你会如何回答今天的主题？"
-          }
-
-          pathlib.Path("daily-topic.json").write_text(
-              json.dumps(record, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8"
-          )
-
-          folder = pathlib.Path("articles")
-          folder.mkdir(exist_ok=True)
-
-          (folder / f"{today}.json").write_text(
-              json.dumps(record, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8"
-          )
-
-          archive = [
-              json.loads(p.read_text(encoding="utf-8"))
-              for p in sorted(folder.glob("*.json"), reverse=True)
-          ]
-
-          pathlib.Path("articles.json").write_text(
-              json.dumps(archive, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8"
-          )
-
-          print("Published:", today, title)
-          PY
-
-      - name: Save published article
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add daily-topic.json articles/ articles.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Publish MindSync daily article"
-            git push
-          fi
-
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#142d31">
+<title>每日文章 · 同频者 MindSync</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f0;color:#193238;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif}header{background:#142d31;color:white;padding:24px}main{max-width:680px;margin:auto;padding:18px}a{color:inherit}article{background:white;border:1px solid #e2e8e4;border-radius:18px;padding:20px;margin:16px 0}h1{font-size:26px}h2{font-size:21px;line-height:1.5}.meta{color:#618078;font-size:14px}.body{white-space:pre-line;line-height:1.85;overflow-wrap:anywhere}button{background:#176c60;color:white;padding:12px 16px;border:0;border-radius:10px;font:inherit}
+</style>
+</head>
+<body>
+<header><a href="./">返回同频者首页</a><h1>每日思想文章</h1></header>
+<main><p id="status" role="status">正在加载文章…</p><button id="refresh" type="button">刷新文章</button><div id="articles"></div></main>
+<script>
+'use strict';
+const statusEl=document.getElementById('status'),feed=document.getElementById('articles'),refresh=document.getElementById('refresh');
+async function load(){
+refresh.disabled=true;
+try{
+const response=await fetch('./articles.json?t='+Date.now(),{cache:'no-store'});
+if(!response.ok)throw new Error('HTTP '+response.status);
+const data=await response.json();
+if(!Array.isArray(data))throw new Error('文章数据格式错误');
+const items=data.filter(a=>a&&typeof a.content==='string'&&(a.title||a.topic)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+const fragment=document.createDocumentFragment();
+for(const [i,a] of items.entries()){
+const article=document.createElement('article');
+const meta=document.createElement('p');meta.className='meta';meta.textContent=(i===0?'最新文章':'历史文章')+' · '+(a.date||'');
+const title=document.createElement('h2');title.textContent=a.title||a.topic;
+const body=document.createElement('div');body.className='body';body.textContent=a.content;
+article.append(meta,title,body);
+if(a.question){const q=document.createElement('p');q.textContent=a.question;article.append(q);}
+fragment.append(article);
+}
+feed.replaceChildren(fragment);
+statusEl.textContent=items.length?'已发布 '+items.length+' 篇 · 最新日期 '+items[0].date:'暂无已发布文章';
+}catch(e){statusEl.textContent='文章暂时无法加载，请点击刷新重试。';console.error(e);}
+finally{refresh.disabled=false;}
+}
+refresh.addEventListener('click',load);load();
+</script>
+</body></html>
